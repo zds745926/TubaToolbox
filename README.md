@@ -1,14 +1,14 @@
 # TubaToolbox
 这是一个基于图吧工具箱二次开发的工具箱
 ## 📁 项目结构
-TubaToolbox/
-├── .gitignore # Git 忽略文件配置
-├── LICENSE # MIT 开源协议
-├── README.md # 项目说明文档
-├── TubaToolbox.csproj # 项目配置文件
-│
-├── App.xaml # 应用程序入口 XAML（全局样式定义）
-├── App.xaml.cs # 应用程序逻辑（单例模式、全局异常处理）
+    TubaToolbox/
+        ├── .gitignore # Git 忽略文件配置
+        ├── LICENSE # MIT 开源协议
+        ├── README.md # 项目说明文档
+        ├── TubaToolbox.csproj # 项目配置文件
+        │
+        ├── App.xaml # 应用程序入口 XAML（全局样式定义）
+        ├── App.xaml.cs # 应用程序逻辑（单例模式、全局异常处理）
 │
 ├── MainWindow.xaml # 主窗口界面（左侧分类栏 + 右侧内容区）
 ├── MainWindow.xaml.cs # 主窗口逻辑（分类切换、工具加载）
