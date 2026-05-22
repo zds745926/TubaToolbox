@@ -167,14 +167,8 @@ dotnet publish -c Release -o publish
 ```
 然后将工具的 Category 字段设为该分类名称即可。
 ## 致谢
-感谢「图吧工具箱」提供的工具合集资源
-原版工具箱下载：https://www.tbtool.cn/download/index.html
-感谢zhangqinghao0811开源的项目
+- 感谢「图吧工具箱」提供的工具合集资源
+- 感谢zhangqinghao0811开源的项目
+- 原版工具箱下载：https://www.tbtool.cn/download/index.html
 ## License
-### MIT
-这个版本：
-- 基于你的实际项目结构
-- 突出配置文件化管理的特点
-- 删除了原版对比（你的版本是二次开发，不是完全重写）
-- 保留了硬件信息检测功能说明
-- 简化了工具列表（因为是通过 config 配置，无需在 README 中列举所有工具）
+MIT License
