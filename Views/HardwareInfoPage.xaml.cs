@@ -14,18 +14,72 @@ namespace TubaToolbox.Views
     public partial class HardwareInfoPage : UserControl
     {
         private bool _isLoading = false;
-        private CancellationTokenSource? _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource;
         
-        private static HardwareInfo? _cachedHardwareInfo;
+        // 静态缓存（所有页面实例共享）
+        private static HardwareInfo _cachedHardwareInfo;
         private static DateTime _lastCacheTime = DateTime.MinValue;
-        private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10); // 缓存10分钟
         private static readonly object CacheLock = new object();
+        
+        // 用于显示加载状态的UI元素
+        private TextBlock _loadingText;
+        private StackPanel _loadingPanel;
 
         public HardwareInfoPage()
         {
             InitializeComponent();
+            
+            // 先显示占位内容
+            ShowLoadingPlaceholder();
+            
+            // 页面加载时异步加载数据
             Loaded += async (s, e) => await LoadHardwareInfoAsync();
-            Unloaded += (s, e) => CancelLoading();
+        }
+
+        private void ShowLoadingPlaceholder()
+        {
+            rootPanel.Children.Clear();
+            
+            var title = new TextBlock
+            {
+                Text = "硬件信息",
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                FontFamily = new FontFamily("Microsoft YaHei UI"),
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+            rootPanel.Children.Add(title);
+            
+            _loadingPanel = new StackPanel
+            {
+                Margin = new Thickness(0, 30, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            
+            _loadingText = new TextBlock
+            {
+                Text = "正在加载硬件信息...",
+                FontSize = 14,
+                Foreground = Brushes.White,
+                FontFamily = new FontFamily("Microsoft YaHei UI"),
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            
+            var tipText = new TextBlock
+            {
+                Text = "首次加载需要3-5秒，之后会使用缓存",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(150, 150, 150)),
+                FontFamily = new FontFamily("Microsoft YaHei UI"),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+            
+            _loadingPanel.Children.Add(_loadingText);
+            _loadingPanel.Children.Add(tipText);
+            rootPanel.Children.Add(_loadingPanel);
         }
 
         private void CancelLoading()
@@ -45,8 +99,9 @@ namespace TubaToolbox.Views
             
             try
             {
-                HardwareInfo? hardwareInfo = null;
+                HardwareInfo hardwareInfo = null;
                 
+                // 检查缓存
                 if (!forceRefresh && IsCacheValid())
                 {
                     lock (CacheLock)
@@ -62,19 +117,27 @@ namespace TubaToolbox.Views
                     }
                 }
                 
-                await Dispatcher.InvokeAsync(ShowLoadingState);
+                // 更新加载提示
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (_loadingText != null)
+                        _loadingText.Text = "正在检测处理器...";
+                });
                 
+                // 在后台线程获取硬件信息
                 hardwareInfo = await Task.Run(() => HardwareInfoService.GetHardwareInfo(_cancellationTokenSource.Token));
                 
                 if (_cancellationTokenSource.Token.IsCancellationRequested)
                     return;
                 
+                // 更新缓存
                 lock (CacheLock)
                 {
                     _cachedHardwareInfo = hardwareInfo;
                     _lastCacheTime = DateTime.Now;
                 }
                 
+                // 回到UI线程更新界面
                 await Dispatcher.InvokeAsync(() => BuildUI(hardwareInfo));
             }
             catch (OperationCanceledException)
@@ -100,24 +163,21 @@ namespace TubaToolbox.Views
             }
         }
 
-        private void ShowLoadingState()
-        {
-            rootPanel.Children.Clear();
-            var loadingText = new TextBlock
-            {
-                Text = "正在加载硬件信息...",
-                FontSize = 14,
-                Foreground = Brushes.White,
-                FontFamily = new FontFamily("Microsoft YaHei UI"),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 20, 0, 0)
-            };
-            rootPanel.Children.Add(loadingText);
-        }
-
         private void ShowErrorState(string errorMessage)
         {
             rootPanel.Children.Clear();
+            
+            var title = new TextBlock
+            {
+                Text = "硬件信息",
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                Foreground = Brushes.White,
+                FontFamily = new FontFamily("Microsoft YaHei UI"),
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+            rootPanel.Children.Add(title);
+            
             var errorText = new TextBlock
             {
                 Text = $"加载失败：{errorMessage}",
@@ -128,13 +188,26 @@ namespace TubaToolbox.Views
                 Margin = new Thickness(0, 20, 0, 0)
             };
             rootPanel.Children.Add(errorText);
+            
+            var retryButton = new Button
+            {
+                Content = "重试",
+                Margin = new Thickness(0, 10, 0, 0),
+                Padding = new Thickness(20, 8, 20, 8),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
+                Foreground = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
+            retryButton.Click += async (s, e) => await LoadHardwareInfoAsync(true);
+            rootPanel.Children.Add(retryButton);
         }
 
         private void BuildUI(HardwareInfo info)
         {
             rootPanel.Children.Clear();
 
-            // 标题
             var title = new TextBlock
             {
                 Text = "硬件信息",
@@ -146,12 +219,10 @@ namespace TubaToolbox.Views
             };
             rootPanel.Children.Add(title);
 
-            // 信息卡片
             AddInfoCard("型号信息", info.ComputerModel);
             AddInfoCard("系统信息", info.SystemInfo);
             AddInfoCard("运行时间", info.Uptime);
 
-            // 详细信息标题
             var detailTitle = new TextBlock
             {
                 Text = "详细信息",
@@ -163,7 +234,6 @@ namespace TubaToolbox.Views
             };
             rootPanel.Children.Add(detailTitle);
 
-            // 详细信息列表
             var details = new Dictionary<string, string>
             {
                 ["处理器"] = info.Processor,
@@ -232,6 +302,12 @@ namespace TubaToolbox.Views
 
             cardBorder.Child = grid;
             rootPanel.Children.Add(cardBorder);
+        }
+
+        // 手动刷新
+        public async Task RefreshAsync()
+        {
+            await LoadHardwareInfoAsync(forceRefresh: true);
         }
     }
 }

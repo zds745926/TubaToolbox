@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using TubaToolbox.Data;
 using TubaToolbox.Views;
-using TubaToolbox.Services;  // 添加这行
+using TubaToolbox.Services;
 
 namespace TubaToolbox
 {
@@ -18,7 +18,7 @@ namespace TubaToolbox
         {
             toolsBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tools");
             InitializeComponent();
-            ConfigManager.Initialize(AppDomain.CurrentDomain.BaseDirectory);  // 添加这行
+            ConfigManager.Initialize(AppDomain.CurrentDomain.BaseDirectory);
             Loaded += MainWindow_Loaded;
         }
 
@@ -32,8 +32,21 @@ namespace TubaToolbox
         private void LoadCategories()
         {
             categoriesPanel.Children.Clear();
-            var categories = ToolConfig.GetCategories();  // 改为 GetCategories()
-
+            
+            // 先添加硬件信息分类
+            var hardwareBtn = new Button
+            {
+                Content = "💻  硬件信息",
+                Tag = "硬件信息",
+                Style = FindResource("CategoryButton") as Style,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Margin = new Thickness(0, 2, 0, 2)
+            };
+            hardwareBtn.Click += Category_Click;
+            categoriesPanel.Children.Add(hardwareBtn);
+            
+            // 再从 ConfigManager 获取其他分类
+            var categories = ConfigManager.GetCategories();
             foreach (var category in categories)
             {
                 var btn = new Button
@@ -89,12 +102,14 @@ namespace TubaToolbox
         {
             if (sender is Button btn && btn.Tag is string categoryName)
             {
+                // 重置之前按钮样式
                 if (lastClickedButton != null)
                 {
                     lastClickedButton.Background = Brushes.Transparent;
                     lastClickedButton.Foreground = new SolidColorBrush(Color.FromRgb(0xDC, 0xDC, 0xDC));
                 }
 
+                // 高亮当前按钮
                 btn.Background = new SolidColorBrush(Color.FromRgb(0x29, 0x80, 0xB9));
                 btn.Foreground = Brushes.White;
                 lastClickedButton = btn;
@@ -113,7 +128,7 @@ namespace TubaToolbox
                 }
                 else
                 {
-                    var tools = ToolConfig.GetToolsByCategory(categoryName);
+                    var tools = ConfigManager.GetToolsByCategory(categoryName);
                     contentArea.Content = new ToolsPage(tools, toolsBasePath);
                 }
             }
